@@ -2,237 +2,132 @@
 
 ## Overview
 
-This project focuses on the **construction, cleaning, transformation, and analysis of interest rate yield curves**, from raw public data to a reproducible dashboard.
+This project focuses on the **construction, cleaning, reconciliation, transformation and analysis of interest rate yield curves**, from raw public data to a reproducible dashboard.
 
-The main objective is not to build a complex predictive model, but to demonstrate the importance of **high-quality financial data**, robust data processing, and clear visualization.
+The main objective is not to build a complex predictive model, but to demonstrate the importance of **high-quality financial data**, robust multi-source reconciliation, and clear visualization.
 
-The project compares yield curves across the **United States and the Euro Area**, transforms par yields into **zero-coupon rates using bootstrapping**, and studies how the term structure evolves over time.
+The project compares yield curves across the **United States and the Euro Area**, transforms par yields into **zero-coupon rates using bootstrapping**, and studies how the term structure evolves over time and across market regimes.
 
 ---
 
 ## Research Question
 
-> How can we reconstruct clean and comparable zero-coupon yield curves from heterogeneous public data sources, and what can their evolution tell us about market regimes, yield curve steepening, inversions, and crisis periods?
+> How can we reconstruct clean and comparable zero-coupon yield curves from heterogeneous public data sources, and what can their evolution tell us about market regimes, yield curve steepening, inversions, and recession periods?
 
 ---
 
-## Project Objectives
+## Where the data work actually is
 
-The project follows a complete data pipeline:
+The raw rate series (FRED, US Treasury, ECB) are individually clean. The real data difficulty in this project is **not scrubbing dirty values, it is reconciling heterogeneous sources**. This reconciliation is the core contribution and is treated as a first-class part of the project, not as preprocessing.
 
-1. **Collect** yield curve data from multiple public sources.
-2. **Standardize** heterogeneous datasets into a common schema.
-3. **Clean and validate** the data.
-4. **Bootstrap** par yields into zero-coupon rates.
-5. **Extract forward rates** from the resulting curves.
-6. **Compare interpolation and curve-fitting methods.**
-7. **Analyze** level, slope, and curvature factors.
-8. **Compare** the US and Euro Area yield curves.
-9. **Visualize** the evolution of the term structure.
-10. **Provide** a reproducible Streamlit dashboard.
+Concretely, the project performs several non-trivial joins and harmonizations:
+
+* **Maturity-grid alignment**: each source exposes a different set of maturities (for example DGS1MO to DGS30 on FRED, a distinct grid on the ECB side). Aligning them onto a common grid is a join on maturity plus interpolation.
+* **Calendar and holiday alignment**: US and Euro Area trading calendars and public holidays differ. Aligning observation dates is a temporal join with explicit gap handling.
+* **Convention harmonization**: day-count conventions differ, and the US series are par yields while the ECB AAA series are already spot (zero-coupon). These must be handled differently before any comparison.
+* **External macro join**: recession indicators (NBER for the US, CEPR for the Euro Area) and a market-stress index (VIX) are joined by date to the curves, to drive the regime and inversion analysis rather than leaving it descriptive.
 
 ---
 
 ## Data Sources
 
-The project relies on several public sources:
-
 ### United States Treasury
-
-US Treasury par yield curve rates, including historical CSV archives available from the US Treasury.
-
-**Source:** `home.treasury.gov`
+US Treasury par yield curve rates, including historical CSV archives available from the US Treasury. Source: `home.treasury.gov`.
 
 ### FRED
-
-Constant maturity Treasury rates obtained through **FRED** using `pandas-datareader`.
-
-The project considers maturities ranging from **1 month to 30 years** (DGS1MO to DGS30).
+Constant maturity Treasury rates obtained through **FRED** using `pandas-datareader`, from **1 month to 30 years** (DGS1MO to DGS30). The VIX series (VIXCLS) is also retrieved here.
 
 ### European Central Bank
+Euro Area yield curves, including AAA spot rates, retrieved through the ECB **SDMX** data infrastructure. Source: `data.ecb.europa.eu`.
 
-Euro Area yield curves, including AAA spot rates, retrieved through the ECB's **SDMX** data infrastructure.
-
-**Source:** `data.ecb.europa.eu`
+### Recession indicators (external join)
+US recession dates (NBER, via FRED series USREC) and Euro Area recession dates (CEPR). At least one of these is retrieved by light web scraping, to cover the scraping component of the project.
 
 ---
 
 ## Data Challenges
 
-Working with several sources introduces a number of data-quality issues:
+Working with several sources introduces a number of data-quality and reconciliation issues, all treated as a core part of the project:
 
-* Different data formats
-* Non-matching maturities
-* Different trading calendars
-* Public holidays
-* Missing observations
-* Gaps in time series
+* Different data formats and shapes
+* Non-matching maturity grids
+* Different trading calendars and public holidays
+* Missing observations and gaps in time series
 * Different day-count conventions
+* Par yields versus zero-coupon spot rates
 * Potential outliers
-
-These issues are treated as a core part of the project rather than as a secondary preprocessing step.
 
 ---
 
 ## Methodology
 
 ### 1. Data Ingestion
-
-Each source has its own connector based on an API, SDMX interface, or programmatic data access.
-
-All sources are transformed into a common structure:
+Each source has its own connector based on an API, an SDMX interface, or programmatic access. No manual download is required. Each connector also **caches the raw pull into `data/raw/`**, so the full pipeline can be re-run and graded even if an API is temporarily unavailable. All sources are transformed into a common structure:
 
 ```text
 date | maturity | rate
 ```
 
-No manual data download is required.
-
----
-
-### 2. Data Cleaning and Quality Control
-
-The cleaning pipeline includes:
-
-* Calendar alignment
-* Missing maturity handling
-* Missing observation handling
-* Outlier detection
-* Data validation
-* Before/after quality reporting
-
-The objective is to make the cleaning process transparent and reproducible.
-
----
+### 2. Cleaning and Reconciliation
+* Calendar and date alignment across sources
+* Maturity-grid alignment onto a common grid
+* Missing maturity and missing observation handling
+* Outlier detection and data validation
+* Explicit before/after quality reporting
 
 ### 3. Bootstrapping
-
-Par yields are transformed into **zero-coupon rates** using a bootstrapping procedure.
-
-The resulting zero-coupon curve is then used to derive **forward rates**.
-
-Day-count conventions are explicitly documented and incorporated into the transformation process.
-
----
+Par yields are transformed into **zero-coupon rates** by bootstrapping; forward rates are then derived. Day-count conventions are documented and incorporated. ECB AAA spot rates are already zero-coupon and are handled accordingly (no double processing).
 
 ### 4. Curve Interpolation and Fitting
-
-Several approaches are compared:
-
-* Linear interpolation
-* Cubic spline interpolation
-* Nelson-Siegel model
-* Svensson model
-
-The goal is to show how the choice of interpolation or fitting method affects the resulting yield curve.
-
----
+Core: linear interpolation, cubic spline, and the **Nelson-Siegel** model.
+Stretch (bonus if time allows): **Svensson** model.
 
 ### 5. Yield Curve Analysis
-
-The project investigates:
-
-* **Level**
-* **Slope**
-* **Curvature**
-* Yield curve inversions
-* Market regimes
-* Relationship between yield curve movements and recession periods
-* Differences between the US and Euro Area term structures
-
-Principal Component Analysis (PCA) is used to study the main factors driving yield curve movements.
+* Level, slope and curvature
+* Principal Component Analysis of the main factors driving curve movements
+* Yield curve inversions and market regimes, using the recession and VIX join
+* US versus Euro Area comparison
 
 ---
 
 ## Visualization
 
-The project includes several visualization formats:
-
-* Yield curve charts
-* Time-series analysis
-* Temporal heatmaps
-* 3D yield curve surfaces
-* Yield curve animations
-* Interactive Streamlit dashboard
-
-The visualizations are designed to make changes in the term structure easy to identify over time.
+Core: yield curve charts, time-series views, temporal heatmaps, and an interactive **Streamlit** dashboard.
+Stretch (bonus): 3D yield curve surfaces and animations.
 
 ---
 
-## Project Pipeline
+## Team Organization
 
-```text
-Public Data Sources
-        │
-        ▼
-     Ingestion
-        │
-        ▼
- Data Standardization
-        │
-        ▼
- Cleaning & Quality Control
-        │
-        ▼
-    Bootstrapping
-        │
-        ▼
- Zero-Coupon Curves
-        │
-        ├──────────────► Forward Rates
-        │
-        ▼
-Interpolation & Curve Fitting
-        │
-        ├── Linear
-        ├── Cubic Spline
-        ├── Nelson-Siegel
-        └── Svensson
-        │
-        ▼
-     Analysis
-        │
-        ├── Level
-        ├── Slope
-        ├── Curvature
-        ├── PCA
-        └── Regime Analysis
-        │
-        ▼
- Visualization & Dashboard
-```
+To keep the workload fair and make sure everyone learns the full pipeline, work is split **by source rather than by stage**:
+
+* Each member owns one source end to end (US Treasury, FRED, ECB): ingestion, cleaning, alignment and, where relevant, bootstrapping of that source.
+* The **bootstrapping core** is written together once, since it is the key technical skill.
+* Every change lands through a **pull request reviewed by another member**, so each person also learns the others' code.
+* A short weekly sync where each member explains what they did.
+
+This way all three members touch every stage of the pipeline.
 
 ---
 
 ## Tech Stack
 
-The project is built with Python and uses:
-
-* **Python**
-* **pandas** — data manipulation
-* **NumPy** — numerical computation
-* **requests** — data collection
-* **pandas-datareader** — FRED data access
-* **SciPy** — interpolation and curve fitting
-* **Matplotlib** — static visualizations
-* **Plotly** — interactive visualizations
-* **Streamlit** — interactive dashboard
-* **Git** — version control
+Python, with: **pandas** (data manipulation), **NumPy** (numerical computation), **requests** (data collection and light scraping), **pandas-datareader** (FRED access), **SciPy** (interpolation and curve fitting), **Matplotlib** and **Plotly** (visualization), **Streamlit** (dashboard), **Git** (version control).
 
 ---
 
 ## Repository Structure
 
 ```text
-yield-curve-analysis/
+yield-curve/
 │
 ├── data/
-│   ├── raw/
+│   ├── raw/          # cached raw pulls (reproducibility)
 │   └── processed/
 │
 ├── notebooks/
 │   ├── 01_data_ingestion.ipynb
-│   ├── 02_data_cleaning.ipynb
+│   ├── 02_data_cleaning_reconciliation.ipynb
 │   ├── 03_bootstrapping.ipynb
 │   ├── 04_curve_fitting.ipynb
 │   ├── 05_analysis.ipynb
@@ -260,35 +155,19 @@ yield-curve-analysis/
 
 ## Reproducibility
 
-Reproducibility is a key objective of the project.
+Reproducibility is a key objective and a graded one. The full pipeline runs from data collection to final visualization without manually downloaded files, and raw pulls are cached in `data/raw/` so results stay consistent. **Running all notebook cells without error is a hard requirement.** Automated tests cover in particular the bootstrapping methodology.
 
-The full pipeline should be executable from raw data collection to final visualization without relying on manually downloaded files.
-
-A third party should be able to:
-
-1. Install the required dependencies.
-2. Run the data ingestion pipeline.
-3. Reproduce the cleaning process.
-4. Reconstruct the zero-coupon curves.
-5. Run the analysis.
-6. Launch the Streamlit dashboard.
-7. Obtain consistent results.
-
-Automated tests are also included, particularly for the bootstrapping methodology.
+A third party should be able to: install dependencies, run ingestion, reproduce the cleaning and reconciliation, reconstruct the zero-coupon curves, run the analysis, launch the dashboard, and obtain consistent results.
 
 ---
 
 ## Quality and Validation
 
-A major focus of the project is making data transformations visible.
+The project makes data transformations visible:
 
-The project therefore aims to provide:
-
-* Raw data before cleaning
-* Cleaned data after processing
-* Visual evidence of data-quality improvements
-* Validation checks
-* Bootstrapping tests
+* Raw data before cleaning and reconciled data after processing
+* Visual evidence of data-quality and alignment improvements
+* Validation checks and bootstrapping tests
 * Explicit day-count conventions
 * No use of future information in historical analysis
 * Comparison of multiple curve construction methods
@@ -297,31 +176,23 @@ The project therefore aims to provide:
 
 ## Expected Deliverables
 
-The final project will include:
-
-* An open-source GitHub repository
-* Reproducible notebooks and code
-* A documented zero-coupon yield curve dataset
-* A Streamlit dashboard
-* A final report
-* Automated tests
-* A complete reproducible environment
+An open-source GitHub repository, reproducible notebooks and code, a documented zero-coupon yield curve dataset, a Streamlit dashboard, a final report, automated tests, and a complete reproducible environment.
 
 ---
 
 ## Roadmap
 
-| Period     | Milestone                                         |
-| ---------- | ------------------------------------------------- |
-| Week 1     | Project setup, repository, environment and scope  |
-| Weeks 2–3  | Data ingestion and source connectors              |
-| Weeks 3–4  | Data cleaning and quality control                 |
-| Weeks 4–5  | Bootstrapping and forward rates                   |
-| Weeks 5–6  | Interpolation and Nelson-Siegel / Svensson models |
-| Weeks 6–7  | Yield curve analysis                              |
-| Weeks 7–8  | Visualization and Streamlit dashboard             |
-| Weeks 8–9  | Reproducibility, testing and repository cleanup   |
-| Weeks 9–10 | Final report and presentation                     |
+| Period     | Milestone                                                     |
+| ---------- | ------------------------------------------------------------ |
+| Week 1     | Project setup, repository, environment and scope             |
+| Weeks 2-3  | Data ingestion and source connectors (with raw caching)      |
+| Weeks 3-4  | Cleaning and multi-source reconciliation                     |
+| Weeks 4-5  | Bootstrapping and forward rates                              |
+| Weeks 5-6  | Interpolation and Nelson-Siegel (Svensson as stretch)        |
+| Weeks 6-7  | Yield curve analysis, recession and VIX join, regimes        |
+| Weeks 7-8  | Visualization and Streamlit dashboard                        |
+| Weeks 8-9  | Reproducibility, testing and repository cleanup              |
+| Weeks 9-10 | Final report and presentation                                |
 
 ---
 
@@ -329,14 +200,10 @@ The final project will include:
 
 > **Data is the core of the project.**
 
-The main value of this project lies in the quality of the data pipeline: collecting heterogeneous financial data, cleaning it rigorously, transforming it correctly, and presenting the resulting yield curves clearly.
-
-The modeling component is intentionally kept focused, while methodological transparency and reproducibility remain central.
+The main value lies in the quality of the data pipeline: collecting heterogeneous financial data, reconciling it rigorously across sources, transforming it correctly, and presenting the resulting yield curves clearly. The modeling component is intentionally kept focused, while methodological transparency and reproducibility remain central.
 
 ---
 
 ## Project Theme
 
-**Quantitative Finance — Interest Rate Term Structure / Yield Curve**
-
-The project combines multi-source financial data collection, data cleaning, zero-coupon bootstrapping, curve-fitting methods, market-regime analysis, visualization, and a reproducible dashboard.
+**Quantitative Finance: Interest Rate Term Structure / Yield Curve.** Multi-source financial data collection, cleaning and reconciliation, zero-coupon bootstrapping, curve-fitting, market-regime analysis, visualization, and a reproducible dashboard.
