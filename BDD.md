@@ -33,3 +33,10 @@ Ce couple permet de tester la robustesse de nos algorithmes de lissage et d'inte
 * **Court Terme (3 Mois)** : IR3MST01INM156N | [Lien FRED](https://fred.stlouisfed.org/tags/series?pageID=1&ob=pv&od=desc&t=3-month%3Bindia%3Binterbank%3Binterest+rate&et=&addgraph2=)
 * **Moyen Terme (2 Ans)** : INTGSTINM193N (Taux des bons du Trésor à 2 ans) | [Lien FRED](https://fred.stlouisfed.org/tags/series?t=bonds%3Bindia%3Binterest+rate)
 * **Long Terme (10 Ans)** : IRLTLT01INM156N | [Lien FRED](https://fred.stlouisfed.org/series/INDIRLTLT01STM)
+
+  ### Plan pour la Zone Euro
+
+  Reconstruire des courbes zéro-coupon propres et comparables est le préalable à toute lecture sérieuse des régimes de marché. Confronter la zone euro aux États-Unis, marché de référence, montre si elle suit le cycle américain ou s'en écarte, du fait du décalage entre les politiques de la Fed et de la BCE. Le Mexique et l'Inde apportent un contraste : des économies émergentes, avec des taux réels plus élevés, une prime de risque pays et de change, et des banques centrales aux contraintes différentes. Cette comparaison permet de tester si les signaux d'inversion et de stress sont universels ou propres aux économies avancées. Elle rend aussi visible la difficulté centrale du projet : réconcilier des sources hétérogènes (conventions, calendriers, qualité des données).
+
+  ** Long Terme, 10 ans : https://data.ecb.europa.eu/data/datasets/YC/YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_10Y
+  ** Court Terme, 3 mois : https://data.ecb.europa.eu/data/datasets/YC/YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_3M
