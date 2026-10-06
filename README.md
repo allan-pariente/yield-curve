@@ -6,16 +6,15 @@ This project focuses on the **construction, cleaning, reconciliation, transforma
 
 The main objective is not to build a complex predictive model, but to demonstrate the importance of **high-quality financial data**, robust multi-source reconciliation, and clear visualization.
 
-The project compares yield curves across the **United States and the Euro Area**, transforms par yields into **zero-coupon rates using bootstrapping**, and studies how the term structure evolves over time and across market regimes.
+The project compares yield curves across developed markets (**United States and the Euro Area**) and emerging markets (**Mexico and India**), transforms par yields into **zero-coupon rates using bootstrapping**, and studies how the term structure evolves over time and across market regimes.
 
 ---
 
 ## Research Question
 
-> How can we reconstruct clean and comparable zero-coupon yield curves from heterogeneous public data sources, and what can their evolution tell us about market regimes, yield curve steepening, inversions, and recession periods?
+> How can we reconstruct clean and comparable zero-coupon yield curves from heterogeneous public data sources (US, EU, MX, IN), and what can their evolution tell us about market regimes, yield curve inversions, developed vs. emerging market spreads, and recession periods?
 
 ---
-
 ## Where the data work actually is
 
 The raw rate series (FRED, US Treasury, ECB) are individually clean. The real data difficulty in this project is **not scrubbing dirty values, it is reconciling heterogeneous sources**. This reconciliation is the core contribution and is treated as a first-class part of the project, not as preprocessing.
@@ -23,8 +22,8 @@ The raw rate series (FRED, US Treasury, ECB) are individually clean. The real da
 Concretely, the project performs several non-trivial joins and harmonizations:
 
 * **Maturity-grid alignment**: each source exposes a different set of maturities (for example DGS1MO to DGS30 on FRED, a distinct grid on the ECB side). Aligning them onto a common grid is a join on maturity plus interpolation.
-* **Calendar and holiday alignment**: US and Euro Area trading calendars and public holidays differ. Aligning observation dates is a temporal join with explicit gap handling.
-* **Convention harmonization**: day-count conventions differ, and the US series are par yields while the ECB AAA series are already spot (zero-coupon). These must be handled differently before any comparison.
+* **Calendar and frequency alignment**: US and Euro Area trading calendars and public holidays differ. Furthermore, emerging market data is often published at a monthly frequency, requiring strict temporal alignment and resampling strategies to join seamlessly with daily US/EU series.
+* **Convention harmonization**: day-count conventions differ, and the US/Emerging series are par yields while the ECB AAA spot rates are already zero-coupon. These must be handled differently before any comparison.
 * **External macro join**: recession indicators (NBER for the US, CEPR for the Euro Area) and a market-stress index (VIX) are joined by date to the curves, to drive the regime and inversion analysis rather than leaving it descriptive.
 
 ---
@@ -35,7 +34,7 @@ Concretely, the project performs several non-trivial joins and harmonizations:
 US Treasury par yield curve rates, including historical CSV archives available from the US Treasury. Source: `home.treasury.gov`.
 
 ### FRED
-Constant maturity Treasury rates obtained through **FRED** using `pandas-datareader`, from **1 month to 30 years** (DGS1MO to DGS30). The VIX series (VIXCLS) is also retrieved here.
+Constant maturity Treasury rates obtained through **FRED** using `pandas-datareader` (or direct API requests), from **1 month to 30 years** (DGS1MO to DGS30). Emerging market sovereign rates for **Mexico and India** (3-month and 10-year maturities) and the VIX series (VIXCLS) are also retrieved here.
 
 ### European Central Bank
 Euro Area yield curves, including AAA spot rates, retrieved through the ECB **SDMX** data infrastructure. Source: `data.ecb.europa.eu`.
@@ -44,7 +43,6 @@ Euro Area yield curves, including AAA spot rates, retrieved through the ECB **SD
 US recession dates (NBER, via FRED series USREC) and Euro Area recession dates (CEPR). At least one of these is retrieved by light web scraping, to cover the scraping component of the project.
 
 ---
-
 ## Data Challenges
 
 Working with several sources introduces a number of data-quality and reconciliation issues, all treated as a core part of the project:
@@ -52,6 +50,7 @@ Working with several sources introduces a number of data-quality and reconciliat
 * Different data formats and shapes
 * Non-matching maturity grids
 * Different trading calendars and public holidays
+* **Daily vs. Monthly frequency alignment (Developed vs. Emerging markets)**
 * Missing observations and gaps in time series
 * Different day-count conventions
 * Par yields versus zero-coupon spot rates
@@ -62,21 +61,17 @@ Working with several sources introduces a number of data-quality and reconciliat
 ## Methodology
 
 ### 1. Data Ingestion
-Each source has its own connector based on an API, an SDMX interface, or programmatic access. No manual download is required. Each connector also **caches the raw pull into `data/raw/`**, so the full pipeline can be re-run and graded even if an API is temporarily unavailable. All sources are transformed into a common structure:
-
-```text
-date | maturity | rate
-```
+Each source has its own connector based on an API, an SDMX interface, or programmatic access. No manual download is required. Each connector also **caches the raw pull into `data/raw/`**, so the full pipeline can be re-run and graded even if an API is temporarily unavailable. All sources are transformed into a common structure: `date | maturity | rate | country | source`.
 
 ### 2. Cleaning and Reconciliation
-* Calendar and date alignment across sources
+* Calendar, date, and frequency alignment across sources (handling daily and monthly data)
 * Maturity-grid alignment onto a common grid
 * Missing maturity and missing observation handling
 * Outlier detection and data validation
 * Explicit before/after quality reporting
 
 ### 3. Bootstrapping
-Par yields are transformed into **zero-coupon rates** by bootstrapping; forward rates are then derived. Day-count conventions are documented and incorporated. ECB AAA spot rates are already zero-coupon and are handled accordingly (no double processing).
+Par yields (US Treasury, and FRED constant maturity rates for US, Mexico, and India) are transformed into **zero-coupon rates** by a custom bootstrapping algorithm; forward rates are then derived. Day-count conventions are documented and incorporated. ECB AAA spot rates are already zero-coupon and are handled accordingly (no double processing).
 
 ### 4. Curve Interpolation and Fitting
 Core: linear interpolation, cubic spline, and the **Nelson-Siegel** model.
@@ -86,10 +81,9 @@ Stretch (bonus if time allows): **Svensson** model.
 * Level, slope and curvature
 * Principal Component Analysis of the main factors driving curve movements
 * Yield curve inversions and market regimes, using the recession and VIX join
-* US versus Euro Area comparison
+* **US vs. Euro Area vs. Emerging Markets (MX/IN) spread analysis**
 
 ---
-
 ## Visualization
 
 Core: yield curve charts, time-series views, temporal heatmaps, and an interactive **Streamlit** dashboard.
@@ -101,7 +95,7 @@ Stretch (bonus): 3D yield curve surfaces and animations.
 
 To keep the workload fair and make sure everyone learns the full pipeline, work is split **by source rather than by stage**:
 
-* Each member owns one source end to end (US Treasury, FRED, ECB): ingestion, cleaning, alignment and, where relevant, bootstrapping of that source.
+* Each member owns one source end to end (US Treasury, FRED including EM extension, ECB): ingestion, cleaning, alignment and, where relevant, bootstrapping of that source.
 * The **bootstrapping core** is written together once, since it is the key technical skill.
 * Every change lands through a **pull request reviewed by another member**, so each person also learns the others' code.
 * A short weekly sync where each member explains what they did.
@@ -115,7 +109,6 @@ This way all three members touch every stage of the pipeline.
 Python, with: **pandas** (data manipulation), **NumPy** (numerical computation), **requests** (data collection and light scraping), **pandas-datareader** (FRED access), **SciPy** (interpolation and curve fitting), **Matplotlib** and **Plotly** (visualization), **Streamlit** (dashboard), **Git** (version control).
 
 ---
-
 ## Repository Structure
 
 ```text
