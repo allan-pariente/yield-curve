@@ -19,11 +19,11 @@ Enfin, d'un point de vue purement technique, leurs dynamiques de taux diffèrent
 -L'Inde réagit davantage à ses propres dynamiques de croissance interne et d'inflation. 
 Ce couple permet de tester la robustesse de nos algorithmes de lissage et d'interpolation Pandas sur des formes de courbes de taux structurellement différentes.
 
-Mexique
+🇲🇽 Mexique
 • Court Terme (3 Mois) : IR3MST01MXM156N | https://fred.stlouisfed.org/series/IRLTLT01MXM156N
 • Moyen Terme (2 Ans) : INTGSTMXM193N (Taux des bons du Trésor à 2 ans) | https://fred.stlouisfed.org/series/INTGSTMXM193N
-• Long Terme (10 Ans) : IRLTLT01MXM156N | https://tradingeconomics.com/mexico/government-bond-yield
-Inde 
-• Court Terme (3 Mois) : IR3MST01INM156N | https://tradingeconomics.com/india/3-month-bill-yield
-• Moyen Terme (2 Ans) : INTGSTINM193N (Taux des bons du Trésor à 2 ans) |
-• Long Terme (10 Ans) : IRLTLT01INM156N | 
+• Long Terme (10 Ans) : IRLTLT01MXM156N | https://fred.stlouisfed.org/tags/series?t=10-year%3Bbonds%3Bmexico
+🇮🇳 Inde 
+• Court Terme (3 Mois) : IR3MST01INM156N | https://fred.stlouisfed.org/tags/series?pageID=1&ob=pv&od=desc&t=3-month%3Bindia%3Binterbank%3Binterest+rate&et=&addgraph2=
+• Moyen Terme (2 Ans) : INTGSTINM193N (Taux des bons du Trésor à 2 ans) | https://fred.stlouisfed.org/tags/series?t=bonds%3Bindia%3Binterest+rate
+• Long Terme (10 Ans) : IRLTLT01INM156N | https://fred.stlouisfed.org/series/INDIRLTLT01STM
