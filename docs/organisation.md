@@ -68,11 +68,11 @@ Date de rendu à confirmer auprès du chargé de TD.
 | 26 oct. | Validation du sujet par le chargé de TD. Dépôt GitHub propre. Chacun fait tourner son téléchargement. |
 | 2 nov. | A : table brute propre (types, `null`). B : VIX + récessions. Diego : premiers graphiques sur une table provisoire. |
 | 9 nov. | A : filtres + journal. B : table `marche` finie. Diego : indicateurs + jointure. |
-| 16 nov. | Analyses descriptives (chacun commente ses graphiques). |
-| 23 nov. | Rédaction du rapport. |
-| 30 nov. | Test de reproductibilité : quelqu'un qui n'a pas écrit le code clone le dépôt sur une autre machine (ou le SSP Cloud) et lance "Run All". |
-| 7 déc. | Marge, relecture, bonus éventuels. |
-| Janvier | Préparation de l'oral. |
+| | Analyses descriptives (chacun commente ses graphiques). |
+|| Rédaction du rapport. |
+|| Test de reproductibilité : quelqu'un qui n'a pas écrit le code clone le dépôt sur une autre machine (ou le SSP Cloud) et lance "Run All". |
+|| Marge, relecture, bonus éventuels. |
+|| Préparation de l'oral. |
 
 ## Règles Git (simples)
 
