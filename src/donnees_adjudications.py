@@ -1,5 +1,5 @@
 """Collecte et nettoyage des adjudications du Trésor américain.
-Responsable : Personne A.
+Responsable : Allan.
 
 Fonction finale utilisée par le rapport : charger_adjudications().
 Format de sortie : voir docs/organisation.md, table `adjudications`.
@@ -25,7 +25,7 @@ def telecharger_ou_lire(url, chemin, params=None):
     - requests.get(url, params=params, headers=EN_TETES, timeout=60)
     - reponse.raise_for_status() lève une erreur si le serveur a répondu par une erreur
     - créer le dossier avant d'écrire : Path(chemin).parent.mkdir(parents=True, exist_ok=True)
-    Cette fonction sert aussi à Personne B (from donnees_adjudications import telecharger_ou_lire).
+    Cette fonction sert aussi à Benjamin (from donnees_adjudications import telecharger_ou_lire).
     """
     raise NotImplementedError
 

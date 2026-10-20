@@ -1,13 +1,13 @@
 # Ce que les adjudications révèlent de la demande pour la dette américaine
 
 Projet de Python pour la data science, ENSAE Paris, 2A, 2026-2027.
-Équipe : Diego Mallard, [Personne A], [Personne B].
+Équipe : Allan Pariente, Benjamin, Diego Mallard.
 
 ## Le sujet
 
-L'État américain emprunte en vendant ses titres de dette aux enchères : ce sont les **adjudications**. Pour chacune, le Trésor annonce un montant, les investisseurs proposent des taux, et l'État retient les offres les moins chères jusqu'à atteindre le montant voulu. Le Trésor publie le résultat de chaque adjudication depuis 1979.
+L'État américain emprunte en vendant ses titres de dette aux enchères : ce sont les adjudications. Pour chacune, le Trésor annonce un montant, les investisseurs proposent des taux, et l'État retient les offres les moins chères jusqu'à atteindre le montant voulu. Le Trésor publie le résultat de chaque adjudication depuis 1979.
 
-Nous utilisons ces résultats pour mesurer **la qualité de la demande pour la dette américaine** et voir ce qui la fait varier.
+Nous utilisons ces résultats pour mesurer la qualité de la demande pour la dette américaine et voir ce qui la fait varier.
 
 ## Question de recherche
 
@@ -18,9 +18,9 @@ Nous utilisons ces résultats pour mesurer **la qualité de la demande pour la d
 3. Les adjudications se passent-elles moins bien quand les marchés sont inquiets (VIX élevé) ou en récession ?
 
 Nous mesurons la qualité d'une adjudication avec trois indicateurs simples :
-- le **taux de couverture** (*bid-to-cover*) : montant demandé / montant servi. Plus il est élevé, plus il y avait de demande ;
-- la **dispersion des offres** : taux limite − taux médian, en points de base. Des offres serrées signalent une demande solide ;
-- la **part des enchérisseurs indirects**, qui regroupent notamment les banques centrales étrangères.
+- le taux de couverture (*bid-to-cover*) : montant demandé / montant servi. Plus il est élevé, plus il y avait de demande ;
+- la dispersion des offres : taux limite - taux médian, en points de base. Des offres serrées signalent une demande solide ;
+- la part des enchérisseurs indirects, qui regroupent notamment les banques centrales étrangères.
 
 ## Données
 
@@ -42,7 +42,7 @@ cd <dossier du dépôt>
 python -m pip install -r requirements.txt
 ```
 
-Puis ouvrir `rapport.ipynb` et exécuter toutes les cellules (« Run All »).
+Puis ouvrir `rapport.ipynb` et exécuter toutes les cellules ("Run All").
 
 ## Organisation du dépôt
 

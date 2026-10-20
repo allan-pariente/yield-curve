@@ -1,5 +1,5 @@
 """Contexte de marché : VIX et récessions.
-Responsable : Personne B.
+Responsable : Benjamin.
 
 Fonction finale utilisée par le rapport : charger_marche().
 Format de sortie : voir docs/organisation.md, table `marche`.
@@ -29,7 +29,7 @@ def charger_vix():
 def charger_recessions():
     """DataFrame avec une ligne par récession : colonnes `debut` et `fin` (premier jour du mois).
 
-    La page du NBER contient un tableau de dates « pic » (début) et « creux » (fin),
+    La page du NBER contient un tableau de dates "pic" (début) et "creux" (fin),
     écrites comme "December 2007 (2007Q4)".
     Indices :
     - texte = telecharger_ou_lire(URL_NBER, DOSSIER_BRUT / "nber.html")
