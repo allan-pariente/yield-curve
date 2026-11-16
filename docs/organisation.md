@@ -72,7 +72,7 @@ Rendu le **mardi 24 novembre 2026**. Sujet validé par le chargé de TD.
 | **Ven. 20 nov.** | **Gel du code. Test de reproductibilité** : quelqu'un qui n'a pas écrit le code clone le dépôt sur le SSP Cloud et lance "Run All". |
 | 21-23 nov. | Rédaction finale, relecture croisée, README. |
 | **Mar. 24 nov.** | **Rendu.** |
-| Janvier | Préparation de l'oral. |
+| Novembre | Préparation de l'oral. |
 
 ## Règles Git (simples)
 
