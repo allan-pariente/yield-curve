@@ -61,23 +61,23 @@ Conventions : taux en % (4.25 = 4,25 %), écarts en points de base (pb), dates a
 
 ## Calendrier
 
-Date de rendu à confirmer auprès du chargé de TD.
+Rendu le **mardi 24 novembre 2026**. Sujet validé par le chargé de TD.
 
-| Semaine | Objectif |
+| Quand | Objectif |
 |---|---|
-| 26 oct. | Validation du sujet par le chargé de TD. Dépôt GitHub propre. Chacun fait tourner son téléchargement. |
-| 2 nov. | A : table brute propre (types, `null`). B : VIX + récessions. Diego : premiers graphiques sur une table provisoire. |
-| 9 nov. | A : filtres + journal. B : table `marche` finie. Diego : indicateurs + jointure. |
-| | Analyses descriptives (chacun commente ses graphiques). |
-|| Rédaction du rapport. |
-|| Test de reproductibilité : quelqu'un qui n'a pas écrit le code clone le dépôt sur une autre machine (ou le SSP Cloud) et lance "Run All". |
-|| Marge, relecture, bonus éventuels. |
-|| Préparation de l'oral. |
+| 26 oct. - 9 nov. | Validation du sujet. Premiers essais de téléchargement (VIX, NBER) et squelette des modules. |
+| Lun. 16 nov. | Diego : module `analyse.py` (indicateurs, jointure, tableaux, graphiques), en *pull request*. |
+| Mer. 18 nov. | Allan : `donnees_adjudications.py` fini. Benjamin : `donnees_marche.py` fini (VIX du CBOE, récessions, stress). Chacun en *pull request*. |
+| Jeu. 19 nov. | Diego : branchement des vraies tables dans `rapport.ipynb`. Chacun commente ses graphiques. |
+| **Ven. 20 nov.** | **Gel du code. Test de reproductibilité** : quelqu'un qui n'a pas écrit le code clone le dépôt sur le SSP Cloud et lance "Run All". |
+| 21-23 nov. | Rédaction finale, relecture croisée, README. |
+| **Mar. 24 nov.** | **Rendu.** |
+| Janvier | Préparation de l'oral. |
 
 ## Règles Git (simples)
 
+- Chacun travaille sur une branche à son nom et ouvre une *pull request* vers `main`, relue et fusionnée par un autre membre.
 - Chacun travaille sur ses fichiers : son module dans `src/` et son notebook dans `notebooks/`. Pas de conflit possible.
 - `rapport.ipynb` : une seule personne à la fois le modifie, on se prévient sur le groupe. Un notebook modifié par deux personnes en même temps se corrompt.
 - `git pull` avant de commencer, `git add`, `git commit -m "message clair"`, `git push` à la fin. Des petits commits fréquents.
-- Bonus : travailler sur des branches et passer par des *pull requests* (le cours le valorise).
 - Ne jamais versionner `data/` (déjà dans `.gitignore`).
