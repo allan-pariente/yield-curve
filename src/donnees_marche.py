@@ -1,54 +1,62 @@
-"""Contexte de marché : VIX et récessions.
-Responsable : Benjamin.
 
-Fonction finale utilisée par le rapport : charger_marche().
-Format de sortie : voir docs/organisation.md, table `marche`.
-"""
 import io
-import re
-
 import pandas as pd
+import requests
+%pip install lxml
 
-from donnees_adjudications import DOSSIER_BRUT, telecharger_ou_lire
 
-URL_VIX = "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
-URL_NBER = "https://www.nber.org/research/data/us-business-cycle-expansions-and-contractions"
+url = "https://r2.datahub.io/clt98ke170001ia08btn3tzgm/main/raw/data/vix-daily.csv"
+url_NBER = "https://www.nber.org/research/data/us-business-cycle-expansions-and-contractions"
 
 
 def charger_vix():
-    """Série du VIX (clôture), indexée par date.
+    vix = pd.read_csv(url)
 
-    Indices :
-    - texte = telecharger_ou_lire(URL_VIX, DOSSIER_BRUT / "vix.csv")
-    - pd.read_csv(io.StringIO(texte)) ; regarder les noms de colonnes (DATE, CLOSE)
-    - les dates sont au format mois/jour/année : pd.to_datetime(..., format="%m/%d/%Y")
-    """
-    raise NotImplementedError
-
-
-def charger_recessions():
-    """DataFrame avec une ligne par récession : colonnes `debut` et `fin` (premier jour du mois).
-
-    La page du NBER contient un tableau de dates "pic" (début) et "creux" (fin),
-    écrites comme "December 2007 (2007Q4)".
-    Indices :
-    - texte = telecharger_ou_lire(URL_NBER, DOSSIER_BRUT / "nber.html")
-    - pd.read_html(io.StringIO(texte))[0] récupère le tableau (testé, nécessite lxml), MAIS :
-      les 2 premières lignes sont des en-têtes, la 1re ligne de données n'a qu'un creux (1854),
-      et les dernières lignes sont des moyennes par période ("1945-2020"...) à retirer ;
-    - pour transformer "December 2007 (2007Q4)" en date : garder le texte avant la parenthèse
-      (.str.split(" \\(").str[0]) puis pd.to_datetime(..., format="%B %Y") ;
-    - vérifier le résultat : il doit y avoir 34 récessions depuis 1857, la dernière en 2020.
-    """
-    raise NotImplementedError
+    vix["DATE"] = pd.to_datetime(vix["DATE"])
+    vix = vix[["DATE", "CLOSE"]]
+    vix = vix.rename(columns={"CLOSE": "vix"})
+    vix = vix.set_index("DATE")
+    return vix
 
 
-def charger_marche():
-    """Table quotidienne : vix, recession (0/1), stress (bas / moyen / haut).
+def charger_récessions():
+    response = requests.get(url_NBER)
+    html = response.text
+    dfs = pd.read_html(io.StringIO(html))
+    récession = dfs[0]
 
-    Indices :
-    - recession : un jour vaut 1 s'il est entre le mois qui SUIT le début et le mois de fin inclus
-      (convention du NBER)
-    - stress : pd.qcut(vix, 3, labels=["bas", "moyen", "haut"])
-    """
-    raise NotImplementedError
+    récession = récession.iloc[2:-5]
+    récession = récession[[0, 1]]
+    récession.columns = ["start", "end"]
+    
+    récession[["start", "end"]] = récession[["start", "end"]].apply(lambda x : x.str.strip())
+    récession[["start", "end"]]= récession[["start", "end"]].apply(lambda x : x.str.split("(").str[0].str.strip())
+    récession[["start", "end"]] = récession[["start","end"]].apply(pd.to_datetime, format = "%B %Y")
+
+    récession = récession.dropna(subset = ["start", "end"])
+
+    return récession
+
+
+def charger_marché():
+    vix = charger_vix()
+    récession = charger_récessions()
+
+   vix["récession"] = 0
+
+   for i in range(len(récession)):
+   debut = récession["start"].iloc[i] + pd.DateOffset(months=1) 
+   fin = récession["end"].iloc[i] + pd.offsets.MonthEnd(0)  
+
+   for date in vix.index:
+        if date >= debut and date <= fin:
+            vix.loc[date, "récession"] = 1
+
+    vix["stress"] = pd.qcut(vix["vix"],q = 3, labels=["bas", "moyen", "haut"])
+
+    marché = vix.reset_index()
+    marché = marché.rename(columns={"DATE": "date"})
+    marché = marché[["date", "vix", "récession", "stress"]]
+
+    return marché
+
