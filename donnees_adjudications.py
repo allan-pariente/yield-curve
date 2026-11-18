@@ -3,8 +3,9 @@
 Source : API Fiscal Data, jeu de données « Treasury Securities Auctions Data »
 https://fiscaldata.treasury.gov/datasets/treasury-securities-auctions-data/
 
-Ce module produit la table `adjudications` utilisée par `analyse.py`.
-Fonctions principales :
+Ce module produit la table `adjudications` utilisée par `analyse.py`, avec
+exactement les colonnes convenues dans `docs/organisation.md` (voir
+`COLONNES_CONVENUES`). Fonctions principales :
 
     telecharger_ou_lire()   : télécharge un fichier JSON, ou le relit s'il existe déjà
     telecharger_brut()      : enchaîne toutes les pages de l'API, tout en texte
@@ -40,7 +41,7 @@ URL_API = (
 )
 
 # Racine du dépôt = dossier parent de src/
-RACINE = Path(__file__).resolve()
+RACINE = Path(__file__).resolve().parent.parent
 DOSSIER_BRUT = RACINE / "data" / "raw"
 
 # L'API accepte jusqu'à 10 000 lignes par page. 1 000 donne ~12 pages pour
@@ -210,35 +211,46 @@ TYPES_CONSERVES = ("Note", "Bond")
 INDICATEURS_NON_NOMINAUX = ("tips", "floating_rate", "inflation_index_security")
 
 # Étape 7 : maturités « normales » des notes et bonds, en années.
-# Une réouverture a un terme résiduel du type "9-Year 10-Month" ; on la
-# rattache à la maturité standard la plus proche si l'écart est < 6 mois.
+# Le `terme` de la table est le terme d'origine du titre (`original_security_term`) :
+# une réouverture est donc rattachée à son titre d'origine (« 10-Year », et non
+# « 9-Year 10-Month »). Il reste quelques termes d'origine atypiques (« 5-Year 2-Month ») ;
+# on les rattache à la maturité standard la plus proche si l'écart est d'au plus 6 mois.
 TERMES_STANDARD = (2, 3, 4, 5, 7, 10, 20, 30)
 TOLERANCE_TERME = 0.5
 
 # Étape 6 : colonne de l'API -> colonne de la table `adjudications`.
-# Les colonnes obligatoires doivent exister (sinon erreur explicite) ; les
-# optionnelles sont gardées si elles sont présentes.
-RENOMMAGE_OBLIGATOIRE = {
-    "auction_date": "date_adjudication",
-    "cusip": "cusip",
-    "security_type": "type_titre",
-    "security_term": "terme",
-    "bid_to_cover_ratio": "taux_couverture",
+# Toutes ces colonnes de l'API doivent exister (sinon erreur explicite).
+#
+# 1) Les colonnes convenues dans docs/organisation.md : c'est la table livrée.
+RENOMMAGE_CONVENU = {
+    "auction_date": "date",
+    "original_security_term": "terme",        # terme d'origine pour une réouverture
+    "reopening": "reouverture",
+    "auction_format": "format",
     "high_yield": "taux_limite",
     "avg_med_yield": "taux_median",
-    "total_accepted": "montant_servi",
-    "indirect_bidder_accepted": "encheres_indirectes",
+    "total_accepted": "montant",
+    "bid_to_cover_ratio": "couverture",
+    "comp_accepted": "servi_comp",
+    "primary_dealer_accepted": "servi_dealers",
+    "direct_bidder_accepted": "servi_directs",
+    "indirect_bidder_accepted": "servi_indirects",
 }
-RENOMMAGE_OPTIONNEL = {
+COLONNES_CONVENUES = list(RENOMMAGE_CONVENU.values())
+
+# 2) Colonnes de travail : nécessaires aux règles de l'étape 7 ou utiles pour
+#    inspecter les lignes, mais hors du format convenu. Elles ne sont renvoyées
+#    qu'avec `nettoyer(..., avec_complements=True)`.
+RENOMMAGE_COMPLEMENTAIRE = {
+    "cusip": "cusip",
+    "security_type": "type_titre",
+    "security_term": "terme_residuel",
     "issue_date": "date_emission",
     "maturity_date": "date_echeance",
-    "offering_amt": "montant_offert",
     "total_tendered": "montant_demande",
     "low_yield": "taux_bas",
+    "offering_amt": "montant_offert",
     "int_rate": "taux_coupon",
-    "direct_bidder_accepted": "encheres_directes",
-    "primary_dealer_accepted": "encheres_dealers",
-    "reopening": "reouverture",
 }
 
 # Au-delà de cette part de lignes écartées comme incohérentes, on prévient :
@@ -251,7 +263,7 @@ def _convertir_types(brut: pd.DataFrame) -> pd.DataFrame:
 
     Le type de chaque colonne est détecté à partir de son contenu, pour ne pas
     dépendre de la liste exacte des ~120 colonnes de l'API :
-      - nom terminant par "_date"  -> date (AAAA-MM-JJ) ;
+      - nom terminant par "_date"  -> date (AAAA-MM-JJ), si toutes les valeurs s'y prêtent ;
       - uniquement "Yes" / "No"    -> booléen ;
       - tout se lit comme un nombre -> nombre ;
       - sinon                      -> texte.
@@ -271,9 +283,9 @@ def _convertir_types(brut: pd.DataFrame) -> pd.DataFrame:
             conv = pd.to_datetime(serie, format="%Y-%m-%d", errors="coerce")
             if conv.notna().sum() == nb_valeurs:
                 df[nom] = conv
-            else:
-                warnings.warn(f"Colonne {nom} : dates illisibles, laissée en texte.")
-            continue
+                continue
+            # Un nom en « _date » ne garantit pas une date (ref_cpi_on_dated_date est
+            # un indice) : on essaie le nombre ci-dessous avant de laisser en texte.
 
         if set(serie.dropna().unique()) <= {"Yes", "No"}:
             df[nom] = serie.map({"Yes": True, "No": False}).astype("boolean")
@@ -282,6 +294,8 @@ def _convertir_types(brut: pd.DataFrame) -> pd.DataFrame:
         conv = pd.to_numeric(serie, errors="coerce")
         if conv.notna().sum() == nb_valeurs:
             df[nom] = conv
+        elif nom.endswith("_date"):
+            warnings.warn(f"Colonne {nom} : ni date ni nombre, laissée en texte.")
     return df
 
 
@@ -306,9 +320,11 @@ def _ajouter_termes(df: pd.DataFrame) -> pd.DataFrame:
 
     - terme_annees   : durée exacte ("9-Year 10-Month" -> 9.83) ;
     - terme_ref      : maturité standard la plus proche (2, 3, 5, 7, 10, 20, 30...)
-                       si l'écart est inférieur à 6 mois, sinon valeur manquante ;
+                       si l'écart est d'au plus 6 mois, sinon valeur manquante ;
     - terme_atypique : vrai si la durée exacte n'est pas une maturité standard
-                       (réouvertures, ou maturités disparues comme 6 ans).
+                       (termes d'origine particuliers, ou maturités disparues comme 6 ans).
+
+    Calculé sur la colonne `terme` (terme d'origine).
     """
     texte = df["terme"].astype("string")
     annees = pd.to_numeric(
@@ -337,8 +353,8 @@ def _ajouter_termes(df: pd.DataFrame) -> pd.DataFrame:
 def lignes_incoherentes(df: pd.DataFrame) -> pd.DataFrame:
     """Étape 7 (lignes incohérentes) : une colonne booléenne par règle.
 
-    Prend la table renommée (celle de `nettoyer()`). Une règle n'est évaluée que
-    si ses colonnes existent ; une valeur manquante ne déclenche jamais une règle.
+    Prend la table de `nettoyer(..., avec_complements=True)` (les règles utilisent
+    des colonnes de travail). Une valeur manquante ne déclenche jamais une règle.
 
       - couverture et montant servi doivent être strictement positifs ;
       - le montant servi ne peut pas dépasser le montant demandé (marge de 1 %) ;
@@ -346,34 +362,38 @@ def lignes_incoherentes(df: pd.DataFrame) -> pd.DataFrame:
       - émission le jour de l'adjudication ou après ; échéance après l'émission.
     """
     r = pd.DataFrame(index=df.index)
-    r["couverture_non_positive"] = df["taux_couverture"] <= 0
-    r["montant_servi_non_positif"] = df["montant_servi"] <= 0
-    if "montant_demande" in df.columns:
-        r["servi_superieur_au_demande"] = df["montant_servi"] > 1.01 * df["montant_demande"]
+    r["couverture_non_positive"] = df["couverture"] <= 0
+    r["montant_servi_non_positif"] = df["montant"] <= 0
+    r["servi_superieur_au_demande"] = df["montant"] > 1.01 * df["montant_demande"]
     r["taux_limite_sous_median"] = df["taux_limite"] < df["taux_median"] - 1e-6
-    if "taux_bas" in df.columns:
-        r["taux_median_sous_bas"] = df["taux_median"] < df["taux_bas"] - 1e-6
-    if "date_emission" in df.columns:
-        r["emission_avant_adjudication"] = df["date_emission"] < df["date_adjudication"]
-        if "date_echeance" in df.columns:
-            r["echeance_avant_emission"] = df["date_echeance"] <= df["date_emission"]
+    r["taux_median_sous_bas"] = df["taux_median"] < df["taux_bas"] - 1e-6
+    r["emission_avant_adjudication"] = df["date_emission"] < df["date"]
+    r["echeance_avant_emission"] = df["date_echeance"] <= df["date_emission"]
     return r.fillna(False).astype(bool)
 
 
-def nettoyer(brut: pd.DataFrame, ecarter_incoherentes: bool = True) -> pd.DataFrame:
+def nettoyer(
+    brut: pd.DataFrame,
+    ecarter_incoherentes: bool = True,
+    avec_complements: bool = False,
+) -> pd.DataFrame:
     """Transforme la table brute de `telecharger_brut()` en table `adjudications`.
 
-    Étapes : 4 (types), 5 (notes et bonds nominaux), 6 (renommage et sélection
-    des colonnes), 7 (lignes incohérentes, termes atypiques). Chaque décision
-    est expliquée dans docs/journal_decisions.md.
+    Étapes : 4 (types), 5 (notes et bonds nominaux avec résultat), 6 (renommage et
+    sélection des colonnes), 7 (lignes incohérentes, termes atypiques). Chaque
+    décision est expliquée dans docs/journal_decisions.md.
 
-    Le compte de lignes à chaque étape est dans `resultat.attrs["bilan"]`.
+    Par défaut, la table a exactement les colonnes de `COLONNES_CONVENUES`
+    (docs/organisation.md), triée par date puis CUSIP. Le compte de lignes à chaque
+    étape est dans `resultat.attrs["bilan"]`.
 
-    Avec `ecarter_incoherentes=False`, les lignes incohérentes sont gardées et
-    repérées par une colonne booléenne `incoherente` : utile pour les inspecter
-    (avec `lignes_incoherentes()` pour le détail règle par règle).
+    - `ecarter_incoherentes=False` garde les lignes incohérentes et les repère par
+      une colonne booléenne `incoherente` (avec `lignes_incoherentes()` pour le détail).
+    - `avec_complements=True` ajoute les colonnes de travail (`RENOMMAGE_COMPLEMENTAIRE`)
+      et les colonnes de l'étape 7b (`terme_annees`, `terme_ref`, `terme_atypique`).
     """
-    manquantes = [c for c in RENOMMAGE_OBLIGATOIRE if c not in brut.columns]
+    renommage = {**RENOMMAGE_CONVENU, **RENOMMAGE_COMPLEMENTAIRE}
+    manquantes = [c for c in renommage if c not in brut.columns]
     if manquantes:
         raise KeyError(
             f"Colonnes absentes de la table brute : {manquantes}. "
@@ -386,15 +406,19 @@ def nettoyer(brut: pd.DataFrame, ecarter_incoherentes: bool = True) -> pd.DataFr
     nb_avant_exclusion = int(df["security_type"].str.strip().isin(TYPES_CONSERVES).sum())
     df = _garder_nominaux(df)                         # étape 5
     bilan["retires_tips_ou_taux_variable"] = nb_avant_exclusion - len(df)
+
+    # Une adjudication annoncée mais sans résultat (montant servi manquant) n'est pas
+    # une observation : on l'écarte avant tout calcul.
+    sans_resultat = df["total_accepted"].isna()
+    bilan["retires_sans_resultat"] = int(sans_resultat.sum())
+    df = df[~sans_resultat]
     bilan["notes_et_bonds_nominaux"] = len(df)
 
-    renommage = dict(RENOMMAGE_OBLIGATOIRE)           # étape 6
-    renommage.update({s: d for s, d in RENOMMAGE_OPTIONNEL.items() if s in df.columns})
-    df = df[list(renommage)].rename(columns=renommage)
-    df["type_titre"] = df["type_titre"].str.strip()
+    df = df[list(renommage)].rename(columns=renommage)  # étape 6
     df["terme"] = df["terme"].str.strip()
+    df["reouverture"] = df["reouverture"].astype(bool)
 
-    sans_date = df["date_adjudication"].isna()        # sans date : jointure impossible
+    sans_date = df["date"].isna()                     # sans date : jointure impossible
     bilan["sans_date_adjudication"] = int(sans_date.sum())
     df = df[~sans_date]
 
@@ -416,7 +440,10 @@ def nettoyer(brut: pd.DataFrame, ecarter_incoherentes: bool = True) -> pd.DataFr
     bilan["termes_atypiques_gardes"] = int(df["terme_atypique"].sum())
     bilan["sans_terme_ref"] = int(df["terme_ref"].isna().sum())
 
-    df = df.sort_values(["date_adjudication", "cusip"]).reset_index(drop=True)
+    df = df.sort_values(["date", "cusip"]).reset_index(drop=True)
+    if not avec_complements:
+        colonnes = COLONNES_CONVENUES + (["incoherente"] if "incoherente" in df.columns else [])
+        df = df[colonnes]
     bilan["lignes_finales"] = len(df)
     df.attrs["bilan"] = bilan
     return df
