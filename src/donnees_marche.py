@@ -47,13 +47,12 @@ def charger_marché():
         debut = récession["start"].iloc[i] + pd.DateOffset(months=1) 
         fin = récession["end"].iloc[i] + pd.offsets.MonthEnd(0)  
 
-    for date in vix.index:
-        if date >= debut and date <= fin:
-            vix.loc[date, "récession"] = 1
+        for date in vix.index:
+            if date >= debut and date <= fin:
+                vix.loc[date, "récession"] = 1
 
     vix["stress"] = pd.qcut(vix["vix"],q = 3, labels=["bas", "moyen", "haut"])
 
-    marché = vix.reset_index("DATE")
     marché = marché.rename(columns={"DATE": "date"})
     marché = marché[["date", "vix", "récession", "stress"]]
 
