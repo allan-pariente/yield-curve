@@ -211,10 +211,10 @@ TYPES_CONSERVES = ("Note", "Bond")
 INDICATEURS_NON_NOMINAUX = ("tips", "floating_rate", "inflation_index_security")
 
 # Étape 7 : maturités « normales » des notes et bonds, en années.
-# Le `terme` de la table est le terme d'origine du titre (`original_security_term`) :
-# une réouverture est donc rattachée à son titre d'origine (« 10-Year », et non
-# « 9-Year 10-Month »). Il reste quelques termes d'origine atypiques (« 5-Year 2-Month ») ;
-# on les rattache à la maturité standard la plus proche si l'écart est d'au plus 6 mois.
+# Le terme d'origine (`original_security_term`) sert à calculer la maturité standard :
+# une réouverture est rattachée à son titre d'origine. Les termes atypiques (« 5-Year
+# 2-Month ») sont associés à la maturité standard la plus proche si l'écart ne dépasse
+# pas 6 mois ; la colonne finale `terme` contient cette maturité standard.
 TERMES_STANDARD = (2, 3, 4, 5, 7, 10, 20, 30)
 TOLERANCE_TERME = 0.5
 
@@ -439,6 +439,8 @@ def nettoyer(
     df = _ajouter_termes(df)
     bilan["termes_atypiques_gardes"] = int(df["terme_atypique"].sum())
     bilan["sans_terme_ref"] = int(df["terme_ref"].isna().sum())
+    df = df[df["terme_ref"].notna()].copy()
+    df["terme"] = df["terme_ref"].astype(str) + "-Year"
 
     df = df.sort_values(["date", "cusip"]).reset_index(drop=True)
     if not avec_complements:

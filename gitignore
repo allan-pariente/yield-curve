@@ -1,5 +1,0 @@
-# Données brutes téléchargées (régénérables : python src/donnees_adjudications.py)
-data/raw/*
-!data/raw/.gitkeep
-__pycache__/
-.ipynb_checkpoints/
