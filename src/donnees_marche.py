@@ -2,10 +2,9 @@
 import io
 import pandas as pd
 import requests
-%pip install lxml
 
 
-url = "https://r2.datahub.io/clt98ke170001ia08btn3tzgm/main/raw/data/vix-daily.csv"
+url = "https://cdn-api.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
 url_NBER = "https://www.nber.org/research/data/us-business-cycle-expansions-and-contractions"
 
 
@@ -42,19 +41,19 @@ def charger_marché():
     vix = charger_vix()
     récession = charger_récessions()
 
-   vix["récession"] = 0
+    vix["récession"] = 0
 
-   for i in range(len(récession)):
-   debut = récession["start"].iloc[i] + pd.DateOffset(months=1) 
-   fin = récession["end"].iloc[i] + pd.offsets.MonthEnd(0)  
+    for i in range(len(récession)):
+        debut = récession["start"].iloc[i] + pd.DateOffset(months=1) 
+        fin = récession["end"].iloc[i] + pd.offsets.MonthEnd(0)  
 
-   for date in vix.index:
+    for date in vix.index:
         if date >= debut and date <= fin:
             vix.loc[date, "récession"] = 1
 
     vix["stress"] = pd.qcut(vix["vix"],q = 3, labels=["bas", "moyen", "haut"])
 
-    marché = vix.reset_index()
+    marché = vix.reset_index("DATE")
     marché = marché.rename(columns={"DATE": "date"})
     marché = marché[["date", "vix", "récession", "stress"]]
 
